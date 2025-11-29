@@ -8,21 +8,17 @@ dotenv.config();
 
 const app = express();
 
-console.log(process.env.MONGO_URI);
 
 app.use(cors());
+
+app.use(postRoutes);
 app.use(express.json());
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("API is running...");
-});
 
-app.use("/api/posts", postRoutes);
 
 const start = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect("mongodb+srv://junaidfarooqpk_db_user:D8Nnb2vstjR7jhrc@social-media-platform.gtr7omj.mongodb.net/?appName=social-media-platform");
     console.log("MongoDB Connected");
 
     app.listen(9090, () => {
