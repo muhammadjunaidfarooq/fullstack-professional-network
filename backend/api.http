@@ -2,9 +2,9 @@ POST http://localhost:9090/register HTTP/1.1
 Content-Type: application/json
 
 {
-  "username": "testuser",
+  "username": "testuser2",
   "password": "test123",
-  "email": "test@gmail.com",
+  "email": "test2@gmail.com",
   "name": "test"
 }
 
@@ -14,7 +14,7 @@ POST http://localhost:9090/login HTTP/1.1
 Content-Type: application/json
 
 {
-  "email": "tst@gmail.com",
-  "password": "tet123"
+  "email": "test2@gmail.com",
+  "password": "test123"
 }
 
