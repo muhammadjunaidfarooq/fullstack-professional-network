@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const educationSchema = mongoose.Schema({
   school: {
@@ -36,6 +37,10 @@ const profileSchema = mongoose.Schema({
     ref: "User",
   },
   bio: {
+    type: String,
+    default: "",
+  },
+  currentPost: {
     type: String,
     default: "",
   },

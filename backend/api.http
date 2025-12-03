@@ -2,9 +2,9 @@ POST http://localhost:9090/register HTTP/1.1
 Content-Type: application/json
 
 {
-  "username": "testuser2",
+  "username": "testuser",
   "password": "test123",
-  "email": "test2@gmail.com",
+  "email": "test@gmail.com",
   "name": "test"
 }
 
@@ -14,7 +14,7 @@ POST http://localhost:9090/login HTTP/1.1
 Content-Type: application/json
 
 {
-  "email": "test2@gmail.com",
+  "email": "test@gmail.com",
   "password": "test123"
 }
 
@@ -23,5 +23,30 @@ GET http://localhost:9090/get_user_and_Profile HTTP/1.1
 Content-Type: application/json
 
 {
-  "token": "0884b2c40db186c923d29fd13ce72f8a8fa4bf6eb716aeda702adbc0047a6e9c"
+  "token": "345d273718f207736fa9fb96885951b8c2addb4125bace2ca46f136bd0191f20"
 }
+
+###
+POST http://localhost:9090/update_profile_data HTTP/1.1
+Content-Type: application/json
+
+{
+  "token": "345d273718f207736fa9fb96885951b8c2addb4125bace2ca46f136bd0191f20",
+  "bio": "Updated bio",
+  "currentPost": "Updated current post",
+  "pastWork": [
+    {
+      "company": "Updated Company A",
+      "position": "Updated Position A",
+      "years": "2+"
+    }
+  ],
+  "education": [
+    {
+      "school": "Updated University A",
+      "degree": "Updated Degree A",
+      "fieldOfStudy": "2016-2020"
+    }
+  ]
+}
+

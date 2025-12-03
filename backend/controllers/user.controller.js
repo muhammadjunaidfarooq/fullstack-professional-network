@@ -1,5 +1,5 @@
 import User from "../models/user.model.js";
-import Profiler from "../models/profile.model.js";
+import Profile from "../models/profile.model.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 
@@ -27,7 +27,7 @@ export const register = async (req, res) => {
     await newUser.save();
     // console.log("User saved:", newUser);
 
-    const profile = new Profiler({ userId: newUser._id });
+    const profile = new Profile({ userId: newUser._id });
     await profile.save();
     // console.log("Profile saved:", profile);
 
@@ -140,12 +140,33 @@ export const getUserAndProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const userProfile = await Profiler.findOne({ userId: user._id }).populate(
+    const userProfile = await Profile.findOne({ userId: user._id }).populate(
       "userId",
       "name email username profilePicture"
     );
 
     return res.json(userProfile);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateProfileData = async (req, res) => {
+  try {
+    const { token, ...newprofileData } = req.body;
+
+    const userProfile = await User.findOne({ token: token });
+    if (!userProfile) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const profile_to_update = await Profile.findOne({
+      userId: userProfile._id,
+    });
+
+    Object.assign(profile_to_update, newprofileData);
+    await profile_to_update.save();
+    return res.json({ message: "Profile updated successfully" });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
