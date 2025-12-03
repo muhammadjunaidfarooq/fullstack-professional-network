@@ -54,7 +54,8 @@ export const login = async (req, res) => {
     if (!user) return res.status(400).json({ message: "User does not exist" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(404).json({ message: "Invalid Credentials" });
+    if (!isMatch)
+      return res.status(404).json({ message: "Invalid Credentials" });
 
     // Generate token
     const token = crypto.randomBytes(32).toString("hex");
@@ -69,7 +70,6 @@ export const login = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
 
 export const uploadProfilePicture = async (req, res) => {
   try {
@@ -98,11 +98,55 @@ export const uploadProfilePicture = async (req, res) => {
     return res.json({
       message: "Profile picture updated successfully",
       profilePicture: req.file.filename,
-      url: `/uploads/${req.file.filename}`
+      url: `/uploads/${req.file.filename}`,
     });
-
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
+export const updateUserProfile = async (req, res) => {
+  try {
+    const { token, ...newUserData } = req.body;
+    const user = await User.findOne({ token: token });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { username, email } = newUserData;
+
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+    if (existingUser) {
+      if (existingUser || string(existingUser._id) !== string(user._id)) {
+        return res
+          .status(409)
+          .json({ message: "Username or Email already in use" });
+      }
+    }
+
+    Object.assign(user, newUserData);
+    await user.save();
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getUserAndProfile = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const user = await User.findOne({ token: token });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const userProfile = await Profiler.findOne({ userId: user._id }).populate(
+      "userId",
+      "name email username profilePicture"
+    );
+
+    return res.json(userProfile);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
