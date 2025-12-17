@@ -35,5 +35,5 @@ router.route("/get_user_and_Profile").get(getUserAndProfile);
 router.route("/update_profile_data").post(updateProfileData);
 router.route("/get_all_user_profiles").get(getAllUserProfiles);
 router.route("/user/download_resume").get(downloadProfile);
-
+router.route("/user/send_connection_request")
 export default router;

@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import PDFDocument from "pdfkit";
 import fs from "fs";
+import ConnectionRequest from "../models/connections.model.js";
 
 const convertUserDataToPDF = async (userData) => {
   const doc = new PDFDocument();
@@ -226,3 +227,61 @@ export const downloadProfile = async (req, res) => {
 
   return res.json({ message: outputPath });
 };
+
+export const sendConnectionRequest = async (req, res) => {
+  try {
+    const { token, targetUserId } = req.body;
+
+    // 1. Validate input
+    if (!token || !targetUserId) {
+      return res.status(400).json({ message: "Token and target user are required" });
+    }
+
+    // 2. Find sender
+    const sender = await User.findOne({ token });
+    if (!sender) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 3. Prevent self connection
+    if (sender._id.toString() === targetUserId) {
+      return res.status(400).json({ message: "You cannot connect with yourself" });
+    }
+
+    // 4. Find target user
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "Target user not found" });
+    }
+
+    // 5. Check existing request (both directions)
+    const existingRequest = await ConnectionRequest.findOne({
+      $or: [
+        { userId: sender._id, connectionId: targetUser._id },
+        { userId: targetUser._id, connectionId: sender._id }
+      ]
+    });
+
+    if (existingRequest) {
+      return res
+        .status(409)
+        .json({ message: "Connection request already exists" });
+    }
+
+    // 6. Create connection request
+    const connectionRequest = new ConnectionRequest({
+      userId: sender._id,
+      connectionId: targetUser._id,
+    });
+
+    await connectionRequest.save();
+
+    return res.status(201).json({
+      message: "Connection request sent successfully"
+    });
+
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
