@@ -2,6 +2,38 @@ import User from "../models/user.model.js";
 import Profile from "../models/profile.model.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import PDFDocument from "pdfkit";
+import fs from "fs";
+
+const convertUserDataToPDF = async (userData) => {
+  const doc = new PDFDocument();
+
+  const outputPath = crypto.randomBytes(16).toString("hex") + ".pdf";
+  const stream = fs.createWriteStream("uploads/" + outputPath);
+
+  doc.pipe(stream);
+
+  doc.image(`uploads/${userData.userId.profilePicture}`, {
+    align: "center",
+    width: 100,
+  });
+
+  doc.fontSize(14).text(`Name: ${userData.userId.name}`);
+  doc.fontSize(14).text(`Username: ${userData.userId.username}`);
+  doc.fontSize(14).text(`Email: ${userData.userId.email}`);
+  doc.fontSize(14).text(`Bio: ${userData.bio || "N/A"}`);
+
+  doc.fontSize(14).text("Past Experiences:");
+  userData.pastWork.forEach((exp, index) => {
+    doc.fontSize(12).text(`Company Name: ${exp.company}`);
+    doc.fontSize(12).text(`Position: ${exp.position}`);
+    doc.fontSize(12).text(`Years: ${exp.years}`);
+  });
+
+  doc.end();
+
+  return outputPath;
+};
 
 export const register = async (req, res) => {
   // console.log("Request Body:", req.body);
@@ -170,4 +202,27 @@ export const updateProfileData = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
+};
+
+export const getAllUserProfiles = async (req, res) => {
+  try {
+    const profiles = await Profile.find().populate(
+      "userId",
+      "name email username profilePicture"
+    );
+    return res.json(profiles);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const downloadProfile = async (req, res) => {
+  const user_id = req.query.id;
+  const userProfile = await Profile.findOne({ userId: user_id }).populate(
+    "userId",
+    "name email username profilePicture"
+  );
+  let outputPath = await convertUserDataToPDF(userProfile);
+
+  return res.json({ message: outputPath });
 };
