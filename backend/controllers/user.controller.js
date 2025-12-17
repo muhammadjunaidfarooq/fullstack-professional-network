@@ -234,7 +234,9 @@ export const sendConnectionRequest = async (req, res) => {
 
     // 1. Validate input
     if (!token || !targetUserId) {
-      return res.status(400).json({ message: "Token and target user are required" });
+      return res
+        .status(400)
+        .json({ message: "Token and target user are required" });
     }
 
     // 2. Find sender
@@ -245,7 +247,9 @@ export const sendConnectionRequest = async (req, res) => {
 
     // 3. Prevent self connection
     if (sender._id.toString() === targetUserId) {
-      return res.status(400).json({ message: "You cannot connect with yourself" });
+      return res
+        .status(400)
+        .json({ message: "You cannot connect with yourself" });
     }
 
     // 4. Find target user
@@ -258,8 +262,8 @@ export const sendConnectionRequest = async (req, res) => {
     const existingRequest = await ConnectionRequest.findOne({
       $or: [
         { userId: sender._id, connectionId: targetUser._id },
-        { userId: targetUser._id, connectionId: sender._id }
-      ]
+        { userId: targetUser._id, connectionId: sender._id },
+      ],
     });
 
     if (existingRequest) {
@@ -277,11 +281,71 @@ export const sendConnectionRequest = async (req, res) => {
     await connectionRequest.save();
 
     return res.status(201).json({
-      message: "Connection request sent successfully"
+      message: "Connection request sent successfully",
     });
-
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
+export const getMyConnectionsRequests = async (req, res) => {
+  const { token } = req.body;
+  try {
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const connections = await ConnectionRequest.find({
+      userId: user._id,
+    }).populate("connectionId", "name email username profilePicture");
+
+    return res.json(connections);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const whatAreMyConnections = async (req, res) => {
+  const { token } = req.body;
+  try {
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const connections = await ConnectionRequest.find({
+      connectionId: user._id,
+      status_accepted: true,
+    }).populate("userId", "name email username profilePicture");
+    return res.json(connections);
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const respondToConnectionRequest = async (req, res) => {
+  const { token, requestId, action_type } = req.body;
+
+  try {
+    const user = await User.findOne({ token });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const connection = await ConnectionRequest.findOne({ _id: requestId });
+    if (!connection) {
+      return res.status(404).json({ message: "Connection request not found" });
+    }
+
+    if (action_type === "accept") {
+      connection.status_accepted = true;
+    } else {
+      connection.status_accepted = false;
+    }
+
+    await connection.save();
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
