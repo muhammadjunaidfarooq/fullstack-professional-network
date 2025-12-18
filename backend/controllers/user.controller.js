@@ -97,7 +97,7 @@ export const login = async (req, res) => {
     user.token = token;
     await user.save();
 
-    return res.json({ token });
+    return res.json({ token: token });
   } catch (error) {
     console.error("Login Error:", error);
     return res.status(500).json({ message: error.message });
