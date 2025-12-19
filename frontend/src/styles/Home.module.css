@@ -25,6 +25,7 @@
   background: -webkit-linear-gradient(45deg, #000000, #b2b2b2);
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  font-weight: bold;
 }
 
 .mainContainer_left > p:nth-child(2) {
