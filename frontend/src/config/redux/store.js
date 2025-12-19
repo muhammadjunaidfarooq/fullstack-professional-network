@@ -1,6 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../reducer/authReducer";
-
+import authReducer from "../redux/reducer/authReducer/index.js";
 /**
  *
  * STEPS for state management
