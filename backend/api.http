@@ -35,8 +35,8 @@ POST http://localhost:9090/login HTTP/1.1
 Content-Type: application/json
 
 {
-  "email": "test2@gmail.com",
-  "password": "test123"
+  "email": "hello@gamil.com",
+  "password": "hello"
 }
 
 ###
@@ -44,7 +44,7 @@ GET http://localhost:9090/get_user_and_Profile HTTP/1.1
 Content-Type: application/json
 
 {
-  "token": "ef19e0e9b0c7cf4a3a166c1972df6dcfbe5560cc3e140ee130824b4955799a28"
+  "token": "f27bd184640d1a57807f0b53ba57914cb0dfebd1af73cb65398be6d5a682b80d"
 }
 
 ###

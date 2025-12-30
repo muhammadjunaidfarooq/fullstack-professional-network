@@ -65,4 +65,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  color: white;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding-inline: 1.2rem;
 }
