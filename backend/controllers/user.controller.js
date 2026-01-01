@@ -106,13 +106,14 @@ export const login = async (req, res) => {
 
 export const uploadProfilePicture = async (req, res) => {
   try {
-    // Check file first
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // Extract token from headers (NOT body)
-    const token = req.headers.authorization?.split(" ")[1];
+    // UPDATE: Look in Headers, Query Params (URL), or Body
+    const token = req.headers.authorization?.split(" ")[1] ||
+                  req.query.token ||
+                  req.body.token;
 
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
@@ -124,7 +125,6 @@ export const uploadProfilePicture = async (req, res) => {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Save file name
     user.profilePicture = req.file.filename;
     await user.save();
 
@@ -166,7 +166,15 @@ export const updateUserProfile = async (req, res) => {
 
 export const getUserAndProfile = async (req, res) => {
   try {
-    const { token } = req.query;
+    const token =
+      req.query.token ||
+      req.body.token ||
+      req.headers.authorization?.split(" ")[1];
+
+    // Added: Stop execution early if no token is found
+    if (!token) {
+      return res.status(400).json({ message: "No token provided" });
+    }
 
     // console.log("Token received:", token);
 

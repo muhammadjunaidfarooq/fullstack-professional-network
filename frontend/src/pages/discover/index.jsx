@@ -10,13 +10,11 @@ const DiscoverPage = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Check token first to ensure we are authorized
-    const token = localStorage.getItem("token");
 
-    if (token && !authState.all_profiles_fetched) {
+    if (!authState.all_profiles_fetched) {
       dispatch(getAllUsers());
     }
-  }, [dispatch, authState.all_profiles_fetched]); // Add dependencies to trigger re-run
+  }, []);
 
   return (
     <UserLayout>
