@@ -1,18 +1,26 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 import styles from "./style.module.css";
 import { useRouter } from "next/router";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setTokenIsThere } from "@/config/redux/reducer/authReducer";
+import { getAllUsers } from "@/config/redux/action/authAction";
+import { BASE_URL } from "@/config";
 
 const DashboardLayout = ({ children }) => {
   const router = useRouter();
 
   const dispatch = useDispatch();
 
+  const authState = useSelector((state) => state.auth);
+
   useEffect(() => {
     if (!localStorage.getItem("token")) {
       router.push("/login");
+    }
+
+    if (!authState.all_profiles_fetched) {
+      dispatch(getAllUsers());
     }
 
     dispatch(setTokenIsThere());
@@ -96,6 +104,22 @@ const DashboardLayout = ({ children }) => {
           <div className="homeContainer_feedContainer">{children}</div>
           <div className="homeContainer_extraContainer">
             <h3>Top Profiles</h3>
+
+            {authState.all_profiles_fetched &&
+              authState.all_users.map((profile) => {
+                return (
+                  <div
+                    key={profile._id}
+                    className={styles.extraContainer_profile}
+                  >
+                    {/* <img
+                      src={`${BASE_URL}/${profile.userId?.profilePicture}`}
+                      alt=""
+                    /> */}
+                    <p>{profile.userId?.name}</p>
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>

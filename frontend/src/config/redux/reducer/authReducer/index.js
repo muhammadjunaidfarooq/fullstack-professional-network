@@ -1,16 +1,19 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { loginUser, registerUser, getAboutUser } from "../../action/authAction";
+import { loginUser, registerUser, getAboutUser, getAllUsers } from "../../action/authAction";
 
 const initialState = {
-  user: [],
+  user: undefined, // Changed from [] to null because it's a single profile object
+  all_users: [], // Added this so it exists before the API call finishes
   isError: false,
   isSuccess: false,
   isLoading: false,
   loggedIn: false,
   message: "",
+  isTokenThere: false,
   profileFetched: false,
   connections: [],
   connectionRequests: [],
+  all_profiles_fetched: false,
 };
 
 const authSlice = createSlice({
@@ -24,6 +27,12 @@ const authSlice = createSlice({
     emptyMessage: (state) => {
       state.message = "";
     },
+    setTokenIsThere: (state) => {
+      state.isTokenThere = true
+    },
+    setTokenIsNotThere: (state) => {
+      state.isTokenThere = false
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -63,10 +72,16 @@ const authSlice = createSlice({
         state.isError = false;
         state.profileFetched = true;
         state.user = action.payload;
-      });
+      })
+      .addCase(getAllUsers.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isError = false;
+        state.all_users = action.payload;
+        state.all_profiles_fetched = true;
+      })
   },
 });
 
-export const { reset, handleLoginUser, emptyMessage } = authSlice.actions;
+export const { reset, handleLoginUser, emptyMessage, setTokenIsThere, setTokenIsNotThere } = authSlice.actions;
 
 export default authSlice.reducer;
