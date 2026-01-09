@@ -24,6 +24,8 @@ const Dashboard = () => {
 
   const router = useRouter();
 
+  const postState = useSelector((state) => state.postReducer);
+
   useEffect(() => {
     if (authState.isTokenThere) {
       dispatch(getAllPosts());
@@ -80,6 +82,23 @@ const Dashboard = () => {
                   Post
                 </div>
               )}
+            </div>
+
+            <div className={styles.postsContainer}>
+              {postState.posts.map((post) => {
+                return (
+                  <div key={post._id} className={styles.singleCard}>
+                    <div className={styles.singleCard__profileContainer}>
+                      <img
+                        className={styles.userProfile}
+                        src={`${BASE_URL}/${post.userId?.profilePicture}`}
+                        alt=""
+                      />
+                      <p>{post.userId.name}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </DashboardLayout>
