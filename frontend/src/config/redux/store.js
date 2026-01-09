@@ -13,7 +13,7 @@ import postReducer from "../redux/reducer/postReducer/index.js";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    posts: postReducer,
+    postReducer: postReducer,
   },
 });
 
