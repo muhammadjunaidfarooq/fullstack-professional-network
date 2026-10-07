@@ -1,40 +1,229 @@
- .homeContainer {
-  display: flex;
- }
+.layout {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
 
- .homeContainer > div:nth-child(odd) {
-  flex: 0.2;
- }
+.layout.withSidebar {
+  grid-template-columns: 225px minmax(0, 1fr);
+}
 
- .homeContainer > div:nth-child(even) {
-  flex: 0.6;
- }
+.layout.withSidebar.withSuggestions {
+  grid-template-columns: 225px minmax(0, 1fr) 300px;
+}
 
- .homeContainer_leftBar {
+.layout.withSuggestions:not(.withSidebar) {
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.content {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
-  align-items: start;
- }
+  gap: 0.75rem;
+}
 
- .sideBarOption {
+.errorWrap {
+  max-width: 560px;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+/* ---------- Left sidebar ---------- */
+.sidebar {
+  position: sticky;
+  top: calc(var(--navbar-height) + 1.5rem);
+}
+
+.profileCard {
+  overflow: hidden;
+  text-align: center;
+  padding-bottom: 0.5rem;
+}
+
+.profileBanner {
+  height: 56px;
+  background: linear-gradient(120deg, #a0b4b7, #d6e2e6);
+}
+
+.profileIdentity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -32px;
+  padding: 0 0.75rem;
+}
+
+.profileAvatar {
+  border: 2px solid var(--color-surface);
+  box-sizing: content-box;
+}
+
+.profileName {
+  margin-top: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.profileIdentity:hover .profileName {
+  text-decoration: underline;
+}
+
+.profileHeadline {
+  padding: 0.15rem 0.75rem 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.addHeadline {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.profileLocation {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  padding: 0.15rem 0.75rem 0.25rem;
+}
+
+.profileCard :global(.divider) {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.sideNav {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0.5rem;
+}
+
+.sideNavLink {
   display: flex;
   align-items: center;
-  font-size: 1.4rem;
-  gap: 1.2rem;
-  width: 80%;
-  max-width: 80%;
-  margin: 0 auto;
-  cursor: pointer;
-  transition: all 0.2s;
- }
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-align: left;
+}
 
- .sideBarOption > svg {
-  height: 1.4em;
-  min-width: fit-content;
- }
+.sideNavLink:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
 
- .sideBarOption:hover {
-  transform: scale(1.03);
- }
+.sideNavActive {
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
 
+/* ---------- Right column ---------- */
+.suggestions {
+  position: sticky;
+  top: calc(var(--navbar-height) + 1.5rem);
+}
+
+.suggestionsCard {
+  padding: 1rem;
+}
+
+.suggestionsTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.suggestionsLoading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.suggestionList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.suggestion {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.suggestionText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.suggestionName {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.suggestionName:hover {
+  text-decoration: underline;
+}
+
+.suggestionHeadline {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 0.3rem;
+}
+
+.seeAll {
+  display: block;
+  margin-top: 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.seeAll:hover {
+  color: var(--color-primary);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1099px) {
+  .suggestions {
+    display: none;
+  }
+
+  .layout.withSidebar.withSuggestions,
+  .layout.withSidebar {
+    grid-template-columns: 225px minmax(0, 1fr);
+  }
+
+  .layout.withSuggestions:not(.withSidebar) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .layout,
+  .layout.withSidebar,
+  .layout.withSidebar.withSuggestions {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.75rem 0.5rem 1.5rem;
+  }
+
+  .sidebar {
+    display: none;
+  }
+}

@@ -1,41 +1,63 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
+const sessionSchema = new mongoose.Schema(
+  {
+    // SHA-256 hash of the session token. The raw token only ever lives in the
+    // client, so a database leak does not expose usable tokens.
+    tokenHash: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    createdAt: { type: Date, default: Date.now },
   },
-  username: {
-    type: String,
-    required: true,
-    unique: true,
+  { _id: false }
+);
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 60,
+    },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      maxlength: 30,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      select: false,
+    },
+    active: {
+      type: Boolean,
+      default: true,
+    },
+    // Either "" (default avatar), "/media/<id>" (current uploads) or a legacy filename.
+    profilePicture: {
+      type: String,
+      default: "",
+    },
+    sessions: {
+      type: [sessionSchema],
+      default: [],
+      select: false,
+    },
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-    required: true,
-  },
-  active: {
-    type: Boolean,
-    default: true,
-  },
-  profilePicture: {
-    type: String,
-    default: "default-profile.png",
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  token: {
-    type: String,
-    default: "",
-  },
-});
+  { timestamps: true }
+);
+
+userSchema.index({ "sessions.tokenHash": 1 });
 
 const User = mongoose.model("User", userSchema);
 

@@ -1,23 +1,182 @@
-.container {
-  padding: 1.2rem;
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .navbar {
+  max-width: var(--content-max-width);
+  height: var(--navbar-height);
+  margin: 0 auto;
+  padding: 0 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
 }
 
-.navBarOptionContainer {
+.brand {
   display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--color-text);
+  min-width: 0;
 }
 
-.buttonJoin {
-  background-color: #cd8987;
-  border-radius: 10px;
-  padding: 0.6rem;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: bold;
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.brandName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.desktopLinks {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.navLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 76px;
+  height: var(--navbar-height);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.navLink:hover {
+  color: var(--color-text);
+}
+
+.navLinkActive {
+  color: var(--color-text);
+  border-bottom-color: var(--color-text);
+}
+
+.iconWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.logoutButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 64px;
+  height: var(--navbar-height);
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   cursor: pointer;
+}
+
+.logoutButton:hover {
+  color: var(--color-danger);
+}
+
+.bottomNav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .desktopLinks {
+    display: none;
+  }
+
+  .navLink,
+  .logoutButton {
+    min-width: 52px;
+  }
+
+  .bottomNav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    height: var(--bottom-nav-height);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bottomLink {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    border-top: 2px solid transparent;
+  }
+
+  .bottomLinkActive {
+    color: var(--color-text);
+    border-top-color: var(--color-text);
+  }
+}
+
+@media (max-width: 420px) {
+  .brandName {
+    display: none;
+  }
+
+  .meLabel,
+  .logoutLabel {
+    display: none;
+  }
 }

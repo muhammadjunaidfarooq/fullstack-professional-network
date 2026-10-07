@@ -1,0 +1,23 @@
+# Render Blueprint for the backend API.
+# Render → New → Blueprint → pick this repo. You will be asked for the values
+# marked "sync: false" (they are secrets / environment specific).
+services:
+  - type: web
+    name: professional-network-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SESSION_TTL_DAYS
+        value: "7"
