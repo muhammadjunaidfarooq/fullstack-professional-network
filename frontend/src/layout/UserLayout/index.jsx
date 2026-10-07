@@ -1,11 +1,16 @@
+import Head from "next/head";
 import NavbarComponent from "@/Components/Navbar";
-import React from "react";
+import styles from "./styles.module.css";
 
-const UserLayout = ({ children }) => {
+const UserLayout = ({ children, title }) => {
+  const pageTitle = title ? `${title} | Professional Network` : "Professional Network";
   return (
-    <div>
+    <div className={styles.page}>
+      <Head>
+        <title>{pageTitle}</title>
+      </Head>
       <NavbarComponent />
-      {children}
+      <main className={styles.main}>{children}</main>
     </div>
   );
 };

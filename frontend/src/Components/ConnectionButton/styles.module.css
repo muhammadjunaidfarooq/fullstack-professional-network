@@ -1,0 +1,13 @@
+.group {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.groupFull {
+  display: flex;
+  width: 100%;
+}
+
+.groupFull > * {
+  flex: 1;
+}

@@ -1,20 +1,18 @@
 import { configureStore } from "@reduxjs/toolkit";
-import authReducer from "../redux/reducer/authReducer/index.js";
-import postReducer from "../redux/reducer/postReducer/index.js";
-/**
- *
- * STEPS for state management
- * Submit action
- * Handle action in its reducer
- * Register Here -> Reducer
- *
- */
+import authReducer from "./reducer/authReducer";
+import postReducer from "./reducer/postReducer";
+import connectionReducer from "./reducer/connectionReducer";
 
+/**
+ * State management steps:
+ * 1. Dispatch an async action (thunk) from a component.
+ * 2. Handle its pending / fulfilled / rejected cases in the matching reducer.
+ * 3. Register the reducer here.
+ */
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     postReducer: postReducer,
+    connections: connectionReducer,
   },
 });
-
-

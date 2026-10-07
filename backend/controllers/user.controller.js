@@ -1,361 +1,238 @@
 import User from "../models/user.model.js";
 import Profile from "../models/profile.model.js";
-import bcrypt from "bcrypt";
-import crypto from "crypto";
-import PDFDocument from "pdfkit";
-import fs from "fs";
+import Post from "../models/posts.model.js";
 import ConnectionRequest from "../models/connections.model.js";
+import { badRequest, conflict, notFound } from "../utils/httpError.js";
+import { publicUser, selfUser, serializeProfile } from "../utils/serializers.js";
+import {
+  assertValidUsername,
+  assertObjectId,
+  escapeRegex,
+  optionalString,
+  parsePagination,
+  requiredString,
+} from "../utils/validation.js";
+import { getConnectedUserIds, getRelationships } from "../services/connection.service.js";
+import { deleteImageByPath, loadImageAsPng, saveImage } from "../services/media.service.js";
+import { writeResumePdf } from "../services/pdf.service.js";
 
-const convertUserDataToPDF = async (userData) => {
-  const doc = new PDFDocument();
+const MAX_LIST_ITEMS = 20;
+const MAX_SKILLS = 30;
 
-  const outputPath = crypto.randomBytes(16).toString("hex") + ".pdf";
-  const stream = fs.createWriteStream("uploads/" + outputPath);
+/** Build the cards shown in search results and suggestions. */
+const toUserCards = async (viewerId, users) => {
+  const ids = users.map((u) => u._id);
+  const [profiles, relationships] = await Promise.all([
+    Profile.find({ userId: { $in: ids } }).select("userId currentPost location").lean(),
+    getRelationships(viewerId, ids),
+  ]);
+  const profileByUser = new Map(profiles.map((p) => [p.userId.toString(), p]));
 
-  doc.pipe(stream);
-
-  doc.image(`uploads/${userData.userId.profilePicture}`, {
-    align: "center",
-    width: 100,
+  return users.map((user) => {
+    const profile = profileByUser.get(user._id.toString());
+    return {
+      user: publicUser(user),
+      headline: profile?.currentPost || "",
+      location: profile?.location || "",
+      connection: relationships.get(user._id.toString()),
+    };
   });
+};
 
-  doc.fontSize(14).text(`Name: ${userData.userId.name}`);
-  doc.fontSize(14).text(`Username: ${userData.userId.username}`);
-  doc.fontSize(14).text(`Email: ${userData.userId.email}`);
-  doc.fontSize(14).text(`Bio: ${userData.bio || "N/A"}`);
+/** GET /api/users?search=&page=&limit= — search people by name, username, headline, skills or location. */
+export const listUsers = async (req, res) => {
+  const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 12, maxLimit: 50 });
+  const search = optionalString(req.query.search, "Search", 100) || "";
 
-  doc.fontSize(14).text("Past Experiences:");
-  userData.pastWork.forEach((exp, index) => {
-    doc.fontSize(12).text(`Company Name: ${exp.company}`);
-    doc.fontSize(12).text(`Position: ${exp.position}`);
-    doc.fontSize(12).text(`Years: ${exp.years}`);
+  const filter = { active: { $ne: false }, _id: { $ne: req.user._id } };
+  if (search) {
+    const pattern = new RegExp(escapeRegex(search), "i");
+    const profileMatches = await Profile.find({
+      $or: [{ currentPost: pattern }, { skills: pattern }, { location: pattern }],
+    })
+      .select("userId")
+      .limit(500)
+      .lean();
+    filter.$or = [
+      { name: pattern },
+      { username: pattern },
+      { _id: { $in: profileMatches.map((p) => p.userId) } },
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    User.countDocuments(filter),
+  ]);
+
+  res.json({
+    users: await toUserCards(req.user._id, users),
+    page,
+    limit,
+    total,
+    hasMore: skip + users.length < total,
   });
-
-  doc.end();
-
-  return outputPath;
 };
 
-export const register = async (req, res) => {
-  // console.log("Request Body:", req.body);
-  try {
-    const { name, email, password, username } = req.body;
-
-    if (!name || !email || !password || !username) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(409).json({ message: "User already exists" });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      username,
-    });
-    await newUser.save();
-    // console.log("User saved:", newUser);
-
-    const profile = new Profile({ userId: newUser._id });
-    await profile.save();
-    // console.log("Profile saved:", profile);
-
-    return res.status(201).json({
-      message: "User Created",
-      user: { id: newUser._id, name, username, email },
-      profileId: profile._id,
-    });
-  } catch (error) {
-    console.error("Register Error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User does not exist" });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(404).json({ message: "Invalid Credentials" });
-
-    // Generate token
-    const token = crypto.randomBytes(32).toString("hex");
-
-    // Save token properly
-    user.token = token;
-    await user.save();
-
-    return res.json({ token: token });
-  } catch (error) {
-    console.error("Login Error:", error);
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const uploadProfilePicture = async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
-
-    // UPDATE: Look in Headers, Query Params (URL), or Body
-    const token = req.headers.authorization?.split(" ")[1] ||
-                  req.query.token ||
-                  req.body.token;
-
-    if (!token) {
-      return res.status(401).json({ message: "No token provided" });
-    }
-
-    const user = await User.findOne({ token });
-
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    user.profilePicture = req.file.filename;
-    await user.save();
-
-    return res.json({
-      message: "Profile picture updated successfully",
-      profilePicture: req.file.filename,
-      url: `/uploads/${req.file.filename}`,
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const updateUserProfile = async (req, res) => {
-  try {
-    const { token, ...newUserData } = req.body;
-    const user = await User.findOne({ token: token });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const { username, email } = newUserData;
-
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) {
-      if (existingUser || string(existingUser._id) !== string(user._id)) {
-        return res
-          .status(409)
-          .json({ message: "Username or Email already in use" });
-      }
-    }
-
-    Object.assign(user, newUserData);
-    await user.save();
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const getUserAndProfile = async (req, res) => {
-  try {
-    const token =
-      req.query.token ||
-      req.body.token ||
-      req.headers.authorization?.split(" ")[1];
-
-    // Added: Stop execution early if no token is found
-    if (!token) {
-      return res.status(400).json({ message: "No token provided" });
-    }
-
-    // console.log("Token received:", token);
-
-    const user = await User.findOne({ token: token });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const userProfile = await Profile.findOne({ userId: user._id }).populate(
-      "userId",
-      "name email username profilePicture"
-    );
-
-    return res.json(userProfile);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const updateProfileData = async (req, res) => {
-  try {
-    const { token, ...newprofileData } = req.body;
-
-    const userProfile = await User.findOne({ token: token });
-    if (!userProfile) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const profile_to_update = await Profile.findOne({
-      userId: userProfile._id,
-    });
-
-    Object.assign(profile_to_update, newprofileData);
-    await profile_to_update.save();
-    return res.json({ message: "Profile updated successfully" });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const getAllUserProfiles = async (req, res) => {
-  try {
-    const profiles = await Profile.find().populate(
-      "userId",
-      "name email username profilePicture"
-    );
-    return res.json(profiles);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const downloadProfile = async (req, res) => {
-  const user_id = req.query.id;
-  const userProfile = await Profile.findOne({ userId: user_id }).populate(
-    "userId",
-    "name email username profilePicture"
+/** GET /api/users/suggestions — a few people the user has no connection with yet. */
+export const getSuggestions = async (req, res) => {
+  const me = req.user._id.toString();
+  const related = await ConnectionRequest.find({
+    $or: [{ userId: me }, { connectionId: me }],
+    status_accepted: { $ne: false },
+  }).lean();
+  const exclude = related.map((r) =>
+    r.userId.toString() === me ? r.connectionId : r.userId
   );
-  let outputPath = await convertUserDataToPDF(userProfile);
 
-  return res.json({ message: outputPath });
+  const users = await User.find({
+    _id: { $nin: [req.user._id, ...exclude] },
+    active: { $ne: false },
+  })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .lean();
+
+  res.json({ users: await toUserCards(req.user._id, users) });
 };
 
-export const sendConnectionRequest = async (req, res) => {
-  try {
-    const { token, targetUserId } = req.body;
+/** GET /api/users/:username — full profile of any user. */
+export const getProfileByUsername = async (req, res) => {
+  const username = String(req.params.username || "").toLowerCase();
+  const user = await User.findOne({ username, active: { $ne: false } }).lean();
+  if (!user) throw notFound("User not found");
 
-    // 1. Validate input
-    if (!token || !targetUserId) {
-      return res
-        .status(400)
-        .json({ message: "Token and target user are required" });
-    }
+  const isSelf = user._id.toString() === req.user._id.toString();
+  const [profile, relationships, connectedIds, postsCount] = await Promise.all([
+    Profile.findOne({ userId: user._id }).lean(),
+    getRelationships(req.user._id, [user._id]),
+    getConnectedUserIds(user._id),
+    Post.countDocuments({ userId: user._id, active: { $ne: false } }),
+  ]);
 
-    // 2. Find sender
-    const sender = await User.findOne({ token });
-    if (!sender) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // 3. Prevent self connection
-    if (sender._id.toString() === targetUserId) {
-      return res
-        .status(400)
-        .json({ message: "You cannot connect with yourself" });
-    }
-
-    // 4. Find target user
-    const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
-      return res.status(404).json({ message: "Target user not found" });
-    }
-
-    // 5. Check existing request (both directions)
-    const existingRequest = await ConnectionRequest.findOne({
-      $or: [
-        { userId: sender._id, connectionId: targetUser._id },
-        { userId: targetUser._id, connectionId: sender._id },
-      ],
-    });
-
-    if (existingRequest) {
-      return res
-        .status(409)
-        .json({ message: "Connection request already exists" });
-    }
-
-    // 6. Create connection request
-    const connectionRequest = new ConnectionRequest({
-      userId: sender._id,
-      connectionId: targetUser._id,
-    });
-
-    await connectionRequest.save();
-
-    return res.status(201).json({
-      message: "Connection request sent successfully",
-    });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
+  res.json({
+    user: isSelf ? selfUser(user) : publicUser(user),
+    profile: serializeProfile(profile),
+    connection: relationships.get(user._id.toString()),
+    stats: { connections: connectedIds.length, posts: postsCount },
+    isSelf,
+  });
 };
 
-export const getMyConnectionsRequests = async (req, res) => {
-  const { token } = req.body;
-  try {
-    const user = await User.findOne({ token });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+/** PATCH /api/users/me — update account fields (name, username). */
+export const updateMe = async (req, res) => {
+  const updates = {};
 
-    const connections = await ConnectionRequest.find({
-      userId: user._id,
-    }).populate("connectionId", "name email username profilePicture");
-
-    return res.json(connections);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+  if (req.body.name !== undefined) {
+    updates.name = requiredString(req.body.name, "Name", { min: 2, max: 60 });
   }
+  if (req.body.username !== undefined) {
+    const username = requiredString(req.body.username, "Username", { min: 3, max: 30 }).toLowerCase();
+    assertValidUsername(username);
+    const taken = await User.exists({ username, _id: { $ne: req.user._id } });
+    if (taken) throw conflict("This username is already taken");
+    updates.username = username;
+  }
+
+  if (Object.keys(updates).length === 0) throw badRequest("Nothing to update");
+
+  Object.assign(req.user, updates);
+  await req.user.save();
+  res.json({ message: "Account updated", user: selfUser(req.user) });
 };
 
-export const whatAreMyConnections = async (req, res) => {
-  const { token } = req.body;
-  try {
-    const user = await User.findOne({ token });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const connections = await ConnectionRequest.find({
-      connectionId: user._id,
-      status_accepted: true,
-    }).populate("userId", "name email username profilePicture");
-    return res.json(connections);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+const cleanEntries = (items, fields, label) => {
+  if (!Array.isArray(items)) throw badRequest(`${label} must be a list`);
+  if (items.length > MAX_LIST_ITEMS) {
+    throw badRequest(`You can add at most ${MAX_LIST_ITEMS} ${label.toLowerCase()} entries`);
   }
+  return items
+    .map((item) => {
+      if (!item || typeof item !== "object") throw badRequest(`Invalid ${label.toLowerCase()} entry`);
+      return Object.fromEntries(
+        fields.map((field) => [field, optionalString(item[field], `${label} ${field}`, 120) || ""])
+      );
+    })
+    .filter((item) => fields.some((field) => item[field]));
 };
 
-export const respondToConnectionRequest = async (req, res) => {
-  const { token, requestId, action_type } = req.body;
+/** PATCH /api/users/me/profile — update professional details. Only listed fields can change. */
+export const updateMyProfile = async (req, res) => {
+  const { bio, currentPost, location, skills, pastWork, education } = req.body;
+  const updates = {};
 
-  try {
-    const user = await User.findOne({ token });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+  if (bio !== undefined) updates.bio = optionalString(bio, "About", 2000);
+  if (currentPost !== undefined) updates.currentPost = optionalString(currentPost, "Headline", 120);
+  if (location !== undefined) updates.location = optionalString(location, "Location", 100);
 
-    const connection = await ConnectionRequest.findOne({ _id: requestId });
-    if (!connection) {
-      return res.status(404).json({ message: "Connection request not found" });
-    }
-
-    if (action_type === "accept") {
-      connection.status_accepted = true;
-    } else {
-      connection.status_accepted = false;
-    }
-
-    await connection.save();
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+  if (skills !== undefined) {
+    if (!Array.isArray(skills)) throw badRequest("Skills must be a list");
+    const unique = [
+      ...new Map(
+        skills
+          .map((skill) => optionalString(skill, "Skill", 40))
+          .filter(Boolean)
+          .map((skill) => [skill.toLowerCase(), skill])
+      ).values(),
+    ];
+    if (unique.length > MAX_SKILLS) throw badRequest(`You can add at most ${MAX_SKILLS} skills`);
+    updates.skills = unique;
   }
+  if (pastWork !== undefined) {
+    updates.pastWork = cleanEntries(pastWork, ["company", "position", "years"], "Experience");
+  }
+  if (education !== undefined) {
+    updates.education = cleanEntries(
+      education,
+      ["school", "degree", "fieldOfStudy", "years"],
+      "Education"
+    );
+  }
+
+  const profile = await Profile.findOneAndUpdate(
+    { userId: req.user._id },
+    { $set: updates, $setOnInsert: { userId: req.user._id } },
+    { new: true, upsert: true, runValidators: true }
+  ).lean();
+
+  res.json({ message: "Profile updated", profile: serializeProfile(profile) });
+};
+
+/** POST /api/users/me/avatar — upload a new profile picture (field: profile_picture). */
+export const uploadAvatar = async (req, res) => {
+  if (!req.file) throw badRequest("Please choose an image to upload");
+
+  const { path } = await saveImage(req.file, { ownerId: req.user._id, kind: "avatar" });
+  const previous = req.user.profilePicture;
+
+  req.user.profilePicture = path;
+  await req.user.save();
+  await deleteImageByPath(previous);
+
+  res.json({ message: "Profile picture updated", user: selfUser(req.user) });
+};
+
+/** DELETE /api/users/me/avatar — go back to the default avatar. */
+export const removeAvatar = async (req, res) => {
+  const previous = req.user.profilePicture;
+  req.user.profilePicture = "";
+  await req.user.save();
+  await deleteImageByPath(previous);
+  res.json({ message: "Profile picture removed", user: selfUser(req.user) });
+};
+
+/** GET /api/users/:id/resume — download a user's profile as a PDF. */
+export const downloadResume = async (req, res) => {
+  assertObjectId(req.params.id, "user id");
+  const user = await User.findOne({ _id: req.params.id, active: { $ne: false } }).lean();
+  if (!user) throw notFound("User not found");
+
+  const profile = serializeProfile(await Profile.findOne({ userId: user._id }).lean());
+  const isSelf = user._id.toString() === req.user._id.toString();
+  const avatarPng = await loadImageAsPng(user.profilePicture);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${user.username}-resume.pdf"`);
+  // Only include the email address when users download their own resume.
+  writeResumePdf(res, { user, profile, email: isSelf ? user.email : null, avatarPng });
 };

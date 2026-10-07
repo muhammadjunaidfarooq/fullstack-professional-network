@@ -1,81 +1,78 @@
-POST http://localhost:9090/register HTTP/1.1
+# Manual API requests for the VS Code "REST Client" extension.
+# 1. Run the backend (npm run dev).
+# 2. Send the "login" request and copy the token into @token below.
+
+@baseUrl = http://localhost:9090
+@token = paste-token-here
+
+### Health check
+GET {{baseUrl}}/api/health
+
+### Register
+POST {{baseUrl}}/api/auth/register
 Content-Type: application/json
 
 {
+  "name": "Test User",
   "username": "testuser",
-  "password": "test123",
-  "email": "test@gmail.com",
-  "name": "test"
+  "email": "test@example.com",
+  "password": "password123"
 }
 
-###
-POST http://localhost:9090/register HTTP/1.1
+### Login
+POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {
-  "username": "testuser2",
-  "password": "test123",
-  "email": "test2@gmail.com",
-  "name": "test2"
+  "email": "test@example.com",
+  "password": "password123"
 }
 
-###
+### Current user + profile
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{token}}
 
-POST http://localhost:9090/login HTTP/1.1
+### Update professional profile
+PATCH {{baseUrl}}/api/users/me/profile
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "email": "rahul@gmail.com",
-  "password": "password"
+  "currentPost": "Software Engineer",
+  "location": "Lahore, Pakistan",
+  "bio": "Full-stack developer.",
+  "skills": ["React", "Node.js", "MongoDB"],
+  "pastWork": [{ "company": "Tech Corp", "position": "Intern", "years": "2024 - 2025" }],
+  "education": [{ "school": "University A", "degree": "BS", "fieldOfStudy": "Software Engineering", "years": "2022 - 2026" }]
 }
 
-###
+### Search people
+GET {{baseUrl}}/api/users?search=engineer&page=1&limit=12
+Authorization: Bearer {{token}}
 
-POST http://localhost:9090/login HTTP/1.1
+### View a profile by username
+GET {{baseUrl}}/api/users/testuser
+Authorization: Bearer {{token}}
+
+### Feed (paginated)
+GET {{baseUrl}}/api/posts?page=1&limit=10
+Authorization: Bearer {{token}}
+
+### Create a text post
+POST {{baseUrl}}/api/posts
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{
-  "email": "test@gmail.com",
-  "password": "test123"
-}
+{ "body": "Hello from the REST client!" }
 
-###
-GET http://localhost:9090/get_user_and_Profile HTTP/1.1
-Content-Type: application/json
+### My connections
+GET {{baseUrl}}/api/connections
+Authorization: Bearer {{token}}
 
-{
-  "token": "795cbed5b3590f5ed0ca52613d2e7300d8827d97725b8e63f290dddd3915a1d4"
-}
+### Pending requests I received
+GET {{baseUrl}}/api/connections/requests?type=received
+Authorization: Bearer {{token}}
 
-###
-POST http://localhost:9090/update_profile_data HTTP/1.1
-Content-Type: application/json
-
-{
-  "token": "e9ac77675d4b0c690a24576292a954281b1600466c990b0f772aa1809be14cc0",
-  "bio": "Software Engineer with 2 years of experience",
-  "currentPost": "Intern at Tech Corp",
-  "pastWork": [
-    {
-      "company": "Tech Crop",
-      "position": "Intern",
-      "years": "1+"
-    }
-  ],
-  "education": [
-    {
-      "school": "Updated University A",
-      "degree": "Updated Degree A",
-      "fieldOfStudy": "2016-2020"
-    }
-  ]
-}
-
-###
-GET http://localhost:9090/get_all_user_profiles HTTP/1.1
-Content-Type: application/json
-
-###
-GET http://localhost:9090/posts HTTP/1.1
-Content-Type: application/json
-
+### Logout (revokes this token)
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{token}}

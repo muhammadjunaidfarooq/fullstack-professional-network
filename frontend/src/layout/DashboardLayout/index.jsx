@@ -1,128 +1,106 @@
-import React, { useEffect, useState } from "react";
-
-import styles from "./style.module.css";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setTokenIsThere } from "@/config/redux/reducer/authReducer";
-import { getAllUsers } from "@/config/redux/action/authAction";
-import { BASE_URL } from "@/config";
+import Avatar from "@/Components/Avatar";
+import { ErrorState, PageLoader } from "@/Components/Feedback";
+import { HomeIcon, MapPinIcon, SearchIcon, UsersIcon } from "@/Components/Icons";
+import { getToken } from "@/config";
+import { getAboutUser } from "@/config/redux/action/authAction";
+import Suggestions from "./Suggestions";
+import styles from "./style.module.css";
 
-const DashboardLayout = ({ children }) => {
+const SIDEBAR_LINKS = [
+  { href: "/dashboard", label: "Feed", Icon: HomeIcon },
+  { href: "/discover", label: "Discover people", Icon: SearchIcon },
+  { href: "/my_connections", label: "My Network", Icon: UsersIcon },
+];
+
+/**
+ * Layout for pages that require a logged-in user. Redirects to /login when
+ * there is no valid session and shows a 3-column layout on wide screens.
+ */
+const DashboardLayout = ({ children, showSidebar = true, showSuggestions = true }) => {
   const router = useRouter();
-
   const dispatch = useDispatch();
-
-  const authState = useSelector((state) => state.auth);
+  const { user, profile, authChecked, message, sessionExpired } = useSelector((state) => state.auth);
+  const hasToken = authChecked && Boolean(getToken());
 
   useEffect(() => {
-    if (!localStorage.getItem("token")) {
-      router.push("/login");
+    if (authChecked && !user && !getToken()) {
+      router.replace({
+        pathname: "/login",
+        query: { next: router.asPath, ...(sessionExpired ? { expired: 1 } : {}) },
+      });
     }
+  }, [authChecked, user, sessionExpired, router]);
 
-    if (!authState.all_profiles_fetched) {
-      dispatch(getAllUsers());
-    }
+  if (!authChecked || (!user && !hasToken)) {
+    return <PageLoader label="Checking your session" />;
+  }
 
-    dispatch(setTokenIsThere());
-  }, []);
-
-  return (
-    <div>
-      <div className="container">
-        <div className={styles.homeContainer}>
-          <div className={styles.homeContainer_leftBar}>
-            <div
-              onClick={() => {
-                router.push("/dashboard");
-              }}
-              className={styles.sideBarOption}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="size-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
-                />
-              </svg>
-              <p>Scroll</p>
-            </div>
-            <div
-              onClick={() => {
-                router.push("/discover");
-              }}
-              className={styles.sideBarOption}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="size-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
-
-              <p>Discover</p>
-            </div>
-            <div
-              onClick={() => {
-                router.push("/my_connections");
-              }}
-              className={styles.sideBarOption}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="size-6"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"
-                />
-              </svg>
-
-              <p>My Connections</p>
-            </div>
-          </div>
-
-          <div className="homeContainer_feedContainer">{children}</div>
-          <div className="homeContainer_extraContainer">
-            <h3>Top Profiles</h3>
-
-            {authState.all_profiles_fetched &&
-              authState.all_users.map((profile) => {
-                return (
-                  <div
-                    key={profile._id}
-                    className={styles.extraContainer_profile}
-                  >
-                    {/* <img
-                      src={`${BASE_URL}/${profile.userId?.profilePicture}`}
-                      alt=""
-                    /> */}
-                    <p>{profile.userId?.name}</p>
-                  </div>
-                );
-              })}
-          </div>
+  if (!user) {
+    // We have a token but could not reach the server (network/server error).
+    return (
+      <div className={styles.errorWrap}>
+        <div className="card">
+          <ErrorState message={message} onRetry={() => dispatch(getAboutUser())} />
         </div>
       </div>
+    );
+  }
+
+  const layoutClass = [
+    styles.layout,
+    showSidebar ? styles.withSidebar : "",
+    showSuggestions ? styles.withSuggestions : "",
+  ].join(" ");
+
+  return (
+    <div className={layoutClass}>
+      {showSidebar && (
+        <aside className={styles.sidebar} aria-label="Your profile">
+          <div className={`card ${styles.profileCard}`}>
+            <div className={styles.profileBanner} />
+            <Link href={`/profile/${user.username}`} className={styles.profileIdentity}>
+              <Avatar src={user.profilePicture} name={user.name} size={64} className={styles.profileAvatar} />
+              <span className={styles.profileName}>{user.name}</span>
+            </Link>
+            <p className={styles.profileHeadline}>
+              {profile?.currentPost || (
+                <Link href="/settings" className={styles.addHeadline}>
+                  + Add a headline
+                </Link>
+              )}
+            </p>
+            {profile?.location && (
+              <p className={styles.profileLocation}>
+                <MapPinIcon size={14} /> {profile.location}
+              </p>
+            )}
+            <hr className="divider" />
+            <nav className={styles.sideNav} aria-label="Sections">
+              {SIDEBAR_LINKS.map(({ href, label, Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`${styles.sideNavLink} ${router.pathname === href ? styles.sideNavActive : ""}`}
+                >
+                  <Icon size={18} /> {label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </aside>
+      )}
+
+      <div className={styles.content}>{children}</div>
+
+      {showSuggestions && (
+        <aside className={styles.suggestions} aria-label="People you may know">
+          <Suggestions />
+        </aside>
+      )}
     </div>
   );
 };
